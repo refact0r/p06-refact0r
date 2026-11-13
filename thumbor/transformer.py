@@ -96,8 +96,11 @@ class Transformer:
                 else:
                     self.target_height = float(self.context.request.height)
             else:
-                self.target_height = self.engine.get_proportional_height(
-                    self.context.request.width
+                self.target_height = max(
+                    1,
+                    self.engine.get_proportional_height(
+                        self.context.request.width
+                    ),
                 )
 
     def get_target_dimensions(self):
@@ -298,6 +301,10 @@ class Transformer:
             )
             crop_height = source_height
 
+        # a crop smaller than 1px is empty, so the picture would vanish
+        crop_width = max(1, crop_width)
+        crop_height = max(1, crop_height)
+
         crop_left = int(
             round(
                 min(
@@ -417,6 +424,9 @@ class Transformer:
         self.context.request.width = int(max(requested_width, resize_width))
         self.context.request.height = int(max(requested_height, resize_height))
 
+        # a computed side that rounds to 0 is an empty image; keep it at 1px
+        resize_width = max(1, resize_width)
+        resize_height = max(1, resize_height)
         self.engine.resize(resize_width, resize_height)
 
     def debug(self):
