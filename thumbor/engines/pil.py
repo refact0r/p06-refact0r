@@ -430,6 +430,18 @@ class Engine(BaseEngine):
                 # 26.10.22: remove ".heic, .heif" in a month(when pillow_heif get updated)
                 self.image = self.image.convert("RGBA")
 
+            if (
+                ext == ".gif"
+                and self.image.mode == "P"
+                and "transparency" not in self.image.info
+            ):
+                # quantize() keeps the palette alpha but not the
+                # transparency index, so GIF output would come back opaque.
+                # Restore the index of the fully transparent palette entry.
+                transparent_index = self.get_transparent_palette_index()
+                if transparent_index is not None:
+                    self.image.info["transparency"] = transparent_index
+
             self.image.format = FORMATS.get(
                 ext, FORMATS[self.get_default_extension()]
             )
@@ -507,6 +519,17 @@ class Engine(BaseEngine):
             self.image = image
 
         return image
+
+    def get_transparent_palette_index(self):
+        # Index of the first fully transparent palette entry, or None.
+        palette = self.image.palette
+        if palette is None or palette.mode != "RGBA":
+            return None
+        data = bytes(palette.palette)
+        for index in range(len(data) // 4):
+            if data[index * 4 + 3] == 0:
+                return index
+        return None
 
     def has_transparency(self):
         has_transparency = (
